@@ -1,0 +1,48 @@
+name: Trigger auto deployment for disappearing-vnet-app
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ master ]
+    paths:
+    - '**'
+    - '.github/workflows/disappearing-vnet-app-AutoDeployTrigger-c36740dc-8d14-4dee-a8e3-fbed856b3e4b.yml'
+
+  # Allow manual trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+      contents: read #Required when GH token is used to authenticate with private repo
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.DISAPPEARINGVNETAPP_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.DISAPPEARINGVNETAPP_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.DISAPPEARINGVNETAPP_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}
+          _dockerfilePathKey_: _dockerfilePath_
+          registryUrl: ca07fce56c64acr.azurecr.io
+          registryUsername: ${{ secrets.DISAPPEARINGVNETAPP_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.DISAPPEARINGVNETAPP_REGISTRY_PASSWORD }}
+          containerAppName: disappearing-vnet-app
+          resourceGroup: privateEndpointTesting
+          imageToBuild: ca07fce56c64acr.azurecr.io/disappearing-vnet-app:${{ github.sha }}
+          _buildArgumentsKey_: |
+            _buildArgumentsValues_
+
+
